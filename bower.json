@@ -1,0 +1,25 @@
+{
+  "name": "star-dodge-clone",
+  "moduleType": [
+    "node"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-console": "^0.1.0",
+    "purescript-lists": "~0.7.1",
+    "purescript-math": "~0.2.0",
+    "purescript-random": "~0.2.2",
+    "purescript-either": "~0.2.2",
+    "purescript-canvas": "~0.3.1",
+    "purescript-dom": "~0.2.0",
+    "purescript-requestanimationframe": "git@github.com:paf31/purescript-requestAnimationFrame.git#master",
+    "purescript-refs": "~0.2.0",
+    "purescript-datetime": "~0.9.0",
+    "purescript-drawing": "~0.3.3"
+  }
+}
