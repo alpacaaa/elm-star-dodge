@@ -81,6 +81,7 @@ canvas =
     }
 
 
+canvasHalf : { height : Float, width : Float }
 canvasHalf =
     { width = (toFloat canvas.width) / 2
     , height = (toFloat canvas.height) / 2
@@ -97,6 +98,7 @@ translateMap =
     List.map translate
 
 
+move : Point -> Float -> Float -> C.Form -> C.Form
 move ( x, y ) w h =
     let
         newX =
@@ -108,6 +110,7 @@ move ( x, y ) w h =
         C.move <| translate ( newX, newY )
 
 
+runGenerator : Random.Generator a -> Float -> a
 runGenerator generator now =
     Random.initialSeed (round now)
         |> Random.step generator
@@ -174,6 +177,7 @@ generateLevelHelp level randomValues =
         }
 
 
+sleep : Time -> Cmd Msg
 sleep ms =
     Task.perform Resume <| Process.sleep ms
 
@@ -188,6 +192,7 @@ init =
             ! [ Task.perform LevelCreated (generateLevel level) ]
 
 
+randomPoint : Float -> Float -> Random.Generator ( Float, Float )
 randomPoint x y =
     Random.pair (Random.float x y) (Random.float x y)
 
@@ -197,14 +202,17 @@ generateStars d =
     Random.list 45 <| randomPoint -d d
 
 
+exp : Float -> Float
 exp n =
     2.718 ^ n
 
 
+decay : Float -> Float -> Float -> Float
 decay at0 at7 n =
     (1.0 - exp (-1 * n / 2.5)) * (at7 - at0) + at0
 
 
+clamp : comparable -> comparable -> comparable
 clamp a max =
     if a > max then
         max
@@ -241,18 +249,22 @@ toPoint p =
         |> Maybe.withDefault { x = -999, y = -999 }
 
 
+len2 : { a | x : Float, y : Float } -> Float
 len2 p =
     p.x * p.x + p.y * p.y
 
 
+dist2 : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Float
 dist2 p1 p2 =
     len2 (subtract p2 p1)
 
 
+subtract : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> { x : Float, y : Float }
 subtract p1 p2 =
     { x = p1.x - p2.x, y = p1.y - p2.y }
 
 
+testCollision : Level -> { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Bool
 testCollision level p1 p2 =
     if p1.y <= 50.0 then
         True
@@ -266,6 +278,7 @@ testCollision level p1 p2 =
         False
 
 
+testOutOfDoor : Level -> Point -> Bool
 testOutOfDoor level ( x, y ) =
     (x > 750.0 && y > level.exit - level.door / 2.0 && y < level.exit + level.door / 2.0)
 
@@ -414,10 +427,7 @@ update msg model =
             model ! []
 
 
-shape =
-    C.filled Color.black <| C.rect 800 500
-
-
+star : Color.Color -> C.Form
 star c =
     C.filled c <| C.circle 30
 
@@ -428,19 +438,27 @@ generate x y =
         |> List.map (\val -> translate ( toFloat val, y ))
 
 
+pathForm : List Point -> C.Form
 pathForm path =
     C.traced (C.solid Color.yellow) (C.path path)
 
 
+border : Float -> C.Form
 border x =
     C.outlined { defaultLine | color = Color.blue }
         (C.rect (700 + x) (400 + x))
 
 
+scene :
+    List Point
+    -> List C.Form
+    -> List C.Form
+    -> List C.Form
+    -> List C.Form
+    -> E.Element
 scene path stars doors levelText introText =
     C.collage 800 500 <|
-        [ shape
-        , (border 0)
+        [ (border 0)
         , (border 10)
         , pathForm path
         ]
@@ -450,12 +468,14 @@ scene path stars doors levelText introText =
             ++ introText
 
 
+drawStar : Star -> C.Form
 drawStar { x, y, r } =
     C.circle r
         |> C.filled Color.blue
         |> move ( x, y ) 1 1
 
 
+drawDoors : Float -> Float -> Float -> List C.Form
 drawDoors door entry exit =
     let
         base =
@@ -470,6 +490,7 @@ drawDoors door entry exit =
         [ left, right ]
 
 
+drawLevelText : Level -> List C.Form
 drawLevelText { level } =
     let
         l =
@@ -491,6 +512,7 @@ drawLevelText { level } =
             |> List.singleton
 
 
+drawIntroText : String -> List C.Form
 drawIntroText text =
     Text.fromString text
         |> Text.color Color.yellow
@@ -501,7 +523,7 @@ drawIntroText text =
         |> List.singleton
 
 
-render : Level -> List Point -> Maybe String -> E.Element
+render : Level -> List Point -> Maybe String -> Html a
 render l path text =
     let
         translated =
@@ -524,6 +546,7 @@ render l path text =
             scene translated stars doors (drawLevelText l) introText
     in
         E.container canvas.width canvas.height position result
+            |> E.toHtml
 
 
 view : Model -> Html Msg
@@ -533,23 +556,22 @@ view model =
             text ""
 
         Sleeping state ->
-            render state.nextLevel
+            render
+                state.nextLevel
                 state.path
                 (Just "Press Space to Start")
-                |> E.toHtml
 
         Waiting state ->
             render
                 state.nextLevel
                 state.path
                 (Just "Press Space to Start")
-                |> E.toHtml
 
         Playing state ->
-            render state.level
+            render
+                state.level
                 state.path
                 Nothing
-                |> E.toHtml
 
 
 subscriptions : Model -> Sub Msg
