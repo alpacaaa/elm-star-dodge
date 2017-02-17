@@ -283,145 +283,170 @@ testOutOfDoor level ( x, y ) =
     (x > 750.0 && y > level.exit - level.door / 2.0 && y < level.exit + level.door / 2.0)
 
 
+handleFrame : Model -> Time -> ( Model, Cmd Msg )
+handleFrame model t =
+    case model of
+        Boot ->
+            model ! []
+
+        Waiting _ ->
+            model ! []
+
+        Sleeping _ ->
+            model ! []
+
+        Playing state ->
+            let
+                level =
+                    state.level
+
+                ( x, y ) =
+                    state.position
+
+                dt =
+                    clamp t 50.0
+
+                dy =
+                    if state.direction == Up then
+                        1.0
+                    else
+                        -1.0
+
+                position =
+                    ( x + level.speed * dt, y + dy * level.speed * dt )
+
+                last =
+                    List.Extra.last state.path
+
+                collision =
+                    testCollision state.level (toPoint <| Just position) (toPoint last)
+
+                escaped =
+                    testOutOfDoor state.level position
+
+                nextPath =
+                    state.path ++ [ position ]
+
+                wState =
+                    { nextLevel = level
+                    , path = nextPath
+                    }
+            in
+                if escaped then
+                    Sleeping wState
+                        ! [ Task.perform LevelCreated (generateLevel <| level.level + 1)
+                          , sleep 500
+                          ]
+                else if collision then
+                    Sleeping wState
+                        ! [ sleep 500 ]
+                else
+                    Playing
+                        { state
+                            | position = position
+                            , path = nextPath
+                        }
+                        ! []
+
+
+handleKeyDown : Model -> Int -> ( Model, Cmd Msg )
+handleKeyDown model code =
+    case model of
+        Boot ->
+            model ! []
+
+        Sleeping _ ->
+            model ! []
+
+        Waiting state ->
+            let
+                level =
+                    state.nextLevel
+
+                pos =
+                    ( 50, level.entry )
+            in
+                if code == 32 then
+                    Playing
+                        { path = [ pos, pos ]
+                        , position = pos
+                        , direction = Down
+                        , level = level
+                        }
+                        ! []
+                else
+                    model ! []
+
+        Playing state ->
+            (Playing <| updateIfSpace state code Down) ! []
+
+
+handleKeyUp : Model -> Int -> ( Model, Cmd Msg )
+handleKeyUp model code =
+    case model of
+        Boot ->
+            model ! []
+
+        Sleeping _ ->
+            model ! []
+
+        Waiting _ ->
+            model ! []
+
+        Playing state ->
+            (Playing <| updateIfSpace state code Up) ! []
+
+
+handleLevelCreated : Model -> Level -> ( Model, Cmd Msg )
+handleLevelCreated model level =
+    let
+        newState =
+            { nextLevel = level
+            , path = []
+            }
+    in
+        case model of
+            Boot ->
+                Waiting newState ! []
+
+            Sleeping _ ->
+                Sleeping newState ! []
+
+            Waiting _ ->
+                Waiting newState ! []
+
+            Playing _ ->
+                Debug.crash "updating level while playing?"
+
+
+resumeGame : Model -> ( Model, Cmd Msg )
+resumeGame model =
+    case model of
+        Sleeping state ->
+            Waiting state
+                ! []
+
+        _ ->
+            Debug.crash "Should not resume when not sleeping"
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Frame t ->
-            case model of
-                Boot ->
-                    model ! []
-
-                Waiting _ ->
-                    model ! []
-
-                Sleeping _ ->
-                    model ! []
-
-                Playing state ->
-                    let
-                        level =
-                            state.level
-
-                        ( x, y ) =
-                            state.position
-
-                        dt =
-                            clamp t 50.0
-
-                        dy =
-                            if state.direction == Up then
-                                1.0
-                            else
-                                -1.0
-
-                        position =
-                            ( x + level.speed * dt, y + dy * level.speed * dt )
-
-                        last =
-                            List.Extra.last state.path
-
-                        collision =
-                            testCollision state.level (toPoint <| Just position) (toPoint last)
-
-                        escaped =
-                            testOutOfDoor state.level position
-
-                        nextPath =
-                            state.path ++ [ position ]
-
-                        wState =
-                            { nextLevel = level
-                            , path = nextPath
-                            }
-                    in
-                        if escaped then
-                            Sleeping wState
-                                ! [ Task.perform LevelCreated (generateLevel <| level.level + 1)
-                                  , sleep 500
-                                  ]
-                        else if collision then
-                            Sleeping wState
-                                ! [ sleep 500 ]
-                        else
-                            Playing
-                                { state
-                                    | position = position
-                                    , path = nextPath
-                                }
-                                ! []
+            handleFrame model t
 
         KeyDown code ->
-            case model of
-                Boot ->
-                    model ! []
-
-                Sleeping _ ->
-                    model ! []
-
-                Waiting state ->
-                    let
-                        level =
-                            state.nextLevel
-
-                        pos =
-                            ( 50, level.entry )
-                    in
-                        if code == 32 then
-                            Playing
-                                { path = [ pos, pos ]
-                                , position = pos
-                                , direction = Down
-                                , level = level
-                                }
-                                ! []
-                        else
-                            model ! []
-
-                Playing state ->
-                    (Playing <| updateIfSpace state code Down) ! []
+            handleKeyDown model code
 
         KeyUp code ->
-            case model of
-                Boot ->
-                    model ! []
-
-                Sleeping _ ->
-                    model ! []
-
-                Waiting _ ->
-                    model ! []
-
-                Playing state ->
-                    (Playing <| updateIfSpace state code Up) ! []
+            handleKeyUp model code
 
         LevelCreated level ->
-            let
-                newState =
-                    { nextLevel = level
-                    , path = []
-                    }
-            in
-                case model of
-                    Boot ->
-                        Waiting newState ! []
-
-                    Sleeping _ ->
-                        Sleeping newState ! []
-
-                    Waiting _ ->
-                        Waiting newState ! []
-
-                    Playing _ ->
-                        Debug.crash "updating level while playing?"
+            handleLevelCreated model level
 
         Resume () ->
-            case model of
-                Sleeping state ->
-                    Waiting state
-                        ! []
-
-                _ ->
-                    Debug.crash "Should not resume if not sleeping"
+            resumeGame model
 
         NoOp ->
             model ! []
