@@ -70,23 +70,16 @@ type alias Level =
     }
 
 
-canvas : { width : Int, height : Int }
-canvas =
-    { width = 800
-    , height = 500
-    }
-
-
-canvasHalf : { height : Float, width : Float }
-canvasHalf =
-    { width = (toFloat canvas.width) / 2
-    , height = (toFloat canvas.height) / 2
+type alias LevelValues =
+    { stars : List Point
+    , entry : Float
+    , exit : Float
     }
 
 
 translate : Point -> Point
 translate ( x, y ) =
-    ( x - canvasHalf.width, y - canvasHalf.height )
+    ( x - 400, y - 250 )
 
 
 move : Point -> Float -> Float -> C.Form -> C.Form
@@ -106,13 +99,6 @@ runGenerator generator now =
     Random.initialSeed (round now)
         |> Random.step generator
         |> Tuple.first
-
-
-type alias LevelValues =
-    { stars : List Point
-    , entry : Float
-    , exit : Float
-    }
 
 
 generateLevel : Int -> Task Never Level
@@ -550,7 +536,7 @@ render l path text =
         result =
             scene translated stars doors (drawLevelText l) introText
     in
-        E.container canvas.width canvas.height position result
+        E.container 800 500 position result
             |> E.toHtml
 
 
