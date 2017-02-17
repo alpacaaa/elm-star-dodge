@@ -161,15 +161,10 @@ sleep ms =
 
 init : ( Model, Cmd Msg )
 init =
-    let
-        level =
-            0
-    in
-        Boot
-            ! [ Task.perform LevelCreated (generateLevel level) ]
+    Boot ! [ Task.perform LevelCreated (generateLevel 0) ]
 
 
-randomPoint : Float -> Float -> Random.Generator ( Float, Float )
+randomPoint : Float -> Float -> Random.Generator Point
 randomPoint x y =
     Random.pair (Random.float x y) (Random.float x y)
 
@@ -540,6 +535,14 @@ render l path text =
             |> E.toHtml
 
 
+renderWaiting : WaitingState -> Html Msg
+renderWaiting state =
+    render
+        state.nextLevel
+        state.path
+        (Just "Press Space to Start")
+
+
 view : Model -> Html Msg
 view model =
     case model of
@@ -547,16 +550,10 @@ view model =
             text ""
 
         Sleeping state ->
-            render
-                state.nextLevel
-                state.path
-                (Just "Press Space to Start")
+            renderWaiting state
 
         Waiting state ->
-            render
-                state.nextLevel
-                state.path
-                (Just "Press Space to Start")
+            renderWaiting state
 
         Playing state ->
             render
