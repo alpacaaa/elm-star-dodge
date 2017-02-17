@@ -321,14 +321,14 @@ handleFrame model t =
                         ! []
 
 
-handleKeyDown : Model -> Int -> ( Model, Cmd Msg )
+handleKeyDown : Model -> Int -> Model
 handleKeyDown model code =
     case model of
         Boot ->
-            model ! []
+            model
 
         Sleeping _ ->
-            model ! []
+            model
 
         Waiting state ->
             let
@@ -345,31 +345,30 @@ handleKeyDown model code =
                         , direction = Down
                         , level = level
                         }
-                        ! []
                 else
-                    model ! []
+                    model
 
         Playing state ->
-            (Playing <| updateIfSpace state code Down) ! []
+            (Playing <| updateIfSpace state code Down)
 
 
-handleKeyUp : Model -> Int -> ( Model, Cmd Msg )
+handleKeyUp : Model -> Int -> Model
 handleKeyUp model code =
     case model of
         Boot ->
-            model ! []
+            model
 
         Sleeping _ ->
-            model ! []
+            model
 
         Waiting _ ->
-            model ! []
+            model
 
         Playing state ->
-            (Playing <| updateIfSpace state code Up) ! []
+            (Playing <| updateIfSpace state code Up)
 
 
-handleLevelCreated : Model -> Level -> ( Model, Cmd Msg )
+handleLevelCreated : Model -> Level -> Model
 handleLevelCreated model level =
     let
         newState =
@@ -379,24 +378,23 @@ handleLevelCreated model level =
     in
         case model of
             Boot ->
-                Waiting newState ! []
+                Waiting newState
 
             Sleeping _ ->
-                Sleeping newState ! []
+                Sleeping newState
 
             Waiting _ ->
-                Waiting newState ! []
+                Waiting newState
 
             Playing _ ->
                 Debug.crash "updating level while playing?"
 
 
-resumeGame : Model -> ( Model, Cmd Msg )
+resumeGame : Model -> Model
 resumeGame model =
     case model of
         Sleeping state ->
             Waiting state
-                ! []
 
         _ ->
             Debug.crash "Should not resume when not sleeping"
@@ -409,16 +407,16 @@ update msg model =
             handleFrame model t
 
         KeyDown code ->
-            handleKeyDown model code
+            handleKeyDown model code ! []
 
         KeyUp code ->
-            handleKeyUp model code
+            handleKeyUp model code ! []
 
         LevelCreated level ->
-            handleLevelCreated model level
+            handleLevelCreated model level ! []
 
         Resume () ->
-            resumeGame model
+            resumeGame model ! []
 
         NoOp ->
             model ! []
