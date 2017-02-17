@@ -14,8 +14,11 @@ import Time exposing (Time)
 import Task exposing (Task)
 
 
-type alias Model =
-    GameState
+type Model
+    = Boot
+    | Playing PlayingState
+    | Waiting WaitingState
+    | Sleeping WaitingState
 
 
 type Msg
@@ -39,13 +42,6 @@ type alias WaitingState =
     { path : List Point
     , nextLevel : Level
     }
-
-
-type GameState
-    = Boot
-    | Playing PlayingState
-    | Waiting WaitingState
-    | Sleeping WaitingState
 
 
 type Direction
@@ -91,11 +87,6 @@ canvasHalf =
 translate : Point -> Point
 translate ( x, y ) =
     ( x - canvasHalf.width, y - canvasHalf.height )
-
-
-translateMap : List Point -> List Point
-translateMap =
-    List.map translate
 
 
 move : Point -> Float -> Float -> C.Form -> C.Form
@@ -450,17 +441,6 @@ update msg model =
 
         NoOp ->
             model ! []
-
-
-star : Color.Color -> C.Form
-star c =
-    C.filled c <| C.circle 30
-
-
-generate : Int -> Float -> List Point
-generate x y =
-    List.range 0 x
-        |> List.map (\val -> translate ( toFloat val, y ))
 
 
 pathForm : List Point -> C.Form
