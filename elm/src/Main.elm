@@ -77,6 +77,29 @@ type alias LevelValues =
     }
 
 
+main : Program Never Model Msg
+main =
+    Html.program { view = view, init = init, update = update, subscriptions = subscriptions }
+
+
+init : ( Model, Cmd Msg )
+init =
+    Boot ! [ Task.perform LevelCreated (generateLevel 0) ]
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ AnimationFrame.diffs Frame
+        , Keyboard.downs KeyDown
+        , Keyboard.ups KeyUp
+        ]
+
+
+
+-- HELPERS
+
+
 translate : Point -> Point
 translate ( x, y ) =
     ( x - 400, y - 250 )
@@ -92,6 +115,49 @@ move ( x, y ) w h =
             y + h / 2
     in
         C.move <| translate ( newX, newY )
+
+
+exp : Float -> Float
+exp n =
+    2.718 ^ n
+
+
+decay : Float -> Float -> Float -> Float
+decay at0 at7 n =
+    (1.0 - exp (-1 * n / 2.5)) * (at7 - at0) + at0
+
+
+clamp : comparable -> comparable -> comparable
+clamp a max =
+    if a > max then
+        max
+    else
+        a
+
+
+toPoint : Maybe Point -> { x : Float, y : Float }
+toPoint p =
+    Maybe.map (\( x, y ) -> { x = x, y = y }) p
+        |> Maybe.withDefault { x = -999, y = -999 }
+
+
+len2 : { a | x : Float, y : Float } -> Float
+len2 p =
+    p.x * p.x + p.y * p.y
+
+
+dist2 : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Float
+dist2 p1 p2 =
+    len2 (subtract p2 p1)
+
+
+subtract : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> { x : Float, y : Float }
+subtract p1 p2 =
+    { x = p1.x - p2.x, y = p1.y - p2.y }
+
+
+
+-- GENERATORS
 
 
 runGenerator : Random.Generator a -> Float -> a
@@ -154,16 +220,6 @@ generateLevelHelp level randomValues =
         }
 
 
-sleep : Time -> Cmd Msg
-sleep ms =
-    Task.perform Resume <| Process.sleep ms
-
-
-init : ( Model, Cmd Msg )
-init =
-    Boot ! [ Task.perform LevelCreated (generateLevel 0) ]
-
-
 randomPoint : Float -> Float -> Random.Generator Point
 randomPoint x y =
     Random.pair (Random.float x y) (Random.float x y)
@@ -174,22 +230,13 @@ generateStars d =
     Random.list 45 <| randomPoint -d d
 
 
-exp : Float -> Float
-exp n =
-    2.718 ^ n
+
+-- UPDATE
 
 
-decay : Float -> Float -> Float -> Float
-decay at0 at7 n =
-    (1.0 - exp (-1 * n / 2.5)) * (at7 - at0) + at0
-
-
-clamp : comparable -> comparable -> comparable
-clamp a max =
-    if a > max then
-        max
-    else
-        a
+sleep : Time -> Cmd Msg
+sleep ms =
+    Task.perform Resume <| Process.sleep ms
 
 
 updateIfSpace : PlayingState -> Int -> Direction -> PlayingState
@@ -213,27 +260,6 @@ populateStarsHelp r index ( dx, dy ) =
         , y = 100.0 + y * 70.0 + dy
         , r = r
         }
-
-
-toPoint : Maybe Point -> { x : Float, y : Float }
-toPoint p =
-    Maybe.map (\( x, y ) -> { x = x, y = y }) p
-        |> Maybe.withDefault { x = -999, y = -999 }
-
-
-len2 : { a | x : Float, y : Float } -> Float
-len2 p =
-    p.x * p.x + p.y * p.y
-
-
-dist2 : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Float
-dist2 p1 p2 =
-    len2 (subtract p2 p1)
-
-
-subtract : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> { x : Float, y : Float }
-subtract p1 p2 =
-    { x = p1.x - p2.x, y = p1.y - p2.y }
 
 
 testCollision : Level -> { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Bool
@@ -422,6 +448,10 @@ update msg model =
             model ! []
 
 
+
+-- VIEW
+
+
 pathForm : List Point -> C.Form
 pathForm path =
     C.traced (C.solid Color.yellow) (C.path path)
@@ -558,17 +588,3 @@ view model =
                 state.level
                 state.path
                 Nothing
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch
-        [ AnimationFrame.diffs Frame
-        , Keyboard.downs KeyDown
-        , Keyboard.ups KeyUp
-        ]
-
-
-main : Program Never Model Msg
-main =
-    Html.program { view = view, init = init, update = update, subscriptions = subscriptions }
