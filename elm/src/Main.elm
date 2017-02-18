@@ -54,8 +54,7 @@ type alias Point =
 
 
 type alias Star =
-    { x : Float
-    , y : Float
+    { position : Point
     , r : Float
     }
 
@@ -135,25 +134,26 @@ clamp a max =
         a
 
 
-toPoint : Maybe Point -> { x : Float, y : Float }
-toPoint p =
-    Maybe.map (\( x, y ) -> { x = x, y = y }) p
-        |> Maybe.withDefault { x = -999, y = -999 }
+len2 : Point -> Float
+len2 ( x, y ) =
+    x * x + y * y
 
 
-len2 : { a | x : Float, y : Float } -> Float
-len2 p =
-    p.x * p.x + p.y * p.y
-
-
-dist2 : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Float
+dist2 : Point -> Point -> Float
 dist2 p1 p2 =
     len2 (subtract p2 p1)
 
 
-subtract : { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> { x : Float, y : Float }
+subtract : Point -> Point -> Point
 subtract p1 p2 =
-    { x = p1.x - p2.x, y = p1.y - p2.y }
+    let
+        ( x1, y1 ) =
+            p1
+
+        ( x2, y2 ) =
+            p2
+    in
+        ( x1 - x2, y1 - y2 )
 
 
 
@@ -255,25 +255,33 @@ populateStarsHelp r index ( dx, dy ) =
 
         y =
             toFloat (index // 9)
+
+        position =
+            ( 100.0 + x * 75.0 + dx
+            , 100.0 + y * 70.0 + dy
+            )
     in
-        { x = 100.0 + x * 75.0 + dx
-        , y = 100.0 + y * 70.0 + dy
+        { position = position
         , r = r
         }
 
 
-testCollision : Level -> { a | x : Float, y : Float } -> { b | x : Float, y : Float } -> Bool
+testCollision : Level -> Point -> Point -> Bool
 testCollision level p1 p2 =
-    if p1.y <= 50.0 then
-        True
-    else if p1.y >= 450.0 then
-        True
-    else if p1.x > 750.0 && (p1.y < level.exit - level.door / 2.0 || p1.y > level.exit + level.door / 2.0) then
-        True
-    else if List.any (\star -> dist2 p1 star < star.r * star.r) level.stars then
-        True
-    else
-        False
+    let
+        ( x1, y1 ) =
+            p1
+    in
+        if y1 <= 50.0 then
+            True
+        else if y1 >= 450.0 then
+            True
+        else if x1 > 750.0 && (y1 < level.exit - level.door / 2.0 || y1 > level.exit + level.door / 2.0) then
+            True
+        else if List.any (\star -> dist2 p1 star.position < star.r * star.r) level.stars then
+            True
+        else
+            False
 
 
 testOutOfDoor : Level -> Point -> Bool
@@ -315,9 +323,10 @@ handleFrame model t =
 
                 last =
                     List.Extra.last state.path
+                        |> Maybe.withDefault ( -999, -999 )
 
                 collision =
-                    testCollision state.level (toPoint <| Just position) (toPoint last)
+                    testCollision state.level position last
 
                 escaped =
                     testOutOfDoor state.level position
@@ -483,10 +492,10 @@ scene path stars doors levelText introText =
 
 
 drawStar : Star -> C.Form
-drawStar { x, y, r } =
+drawStar { position, r } =
     C.circle r
         |> C.filled Color.blue
-        |> move ( x, y ) 1 1
+        |> move position 1 1
 
 
 drawDoors : Float -> Float -> Float -> List C.Form
